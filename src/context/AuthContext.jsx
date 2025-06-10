@@ -1,39 +1,196 @@
-import React, { createContext, useState, useEffect, useCallback } from "react";
-import api from "../services/api";
-import ErrorBoundary from "../utils/ErrorBoundary";
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { logoutUser } from '../utils/logoutHandler';
+import api from '../services/api';
+import ErrorBoundary from "../utils/ErrorBoundary.jsx";
+import { toast } from 'react-toastify';
 
-// Token management utilities
-const TOKEN_KEY = 'accessToken';
-const REFRESH_TOKEN_KEY = 'refreshToken';
-
-const getToken = () => document.cookie.split('; ').find(row => row.startsWith(`${TOKEN_KEY}=`))?.split('=')[1];
-const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
-const setTokens = (accessToken, refreshToken) => {
-  document.cookie = `${TOKEN_KEY}=${accessToken}; path=/; secure; samesite=strict`;
-  if (refreshToken) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+// Debug logger
+const debug = (component, action, data = null) => {
+  if (import.meta.env.DEV) {
+    console.log(`[AuthContext:${component}] ${action}`, data || '');
   }
 };
-const clearTokens = () => {
-  document.cookie = `${TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+
+// Create context
+const AuthContext = createContext(null);
+
+// Token management utilities
+export const getAccessToken = () => {
+  const token = localStorage.getItem('accessToken');
+  debug('Token', 'Getting access token', { exists: !!token });
+  return token;
 };
 
-// Create context with default values
-const defaultContext = {
-  user: null,
-  setUser: () => {},
-  isAuthenticated: false,
-  setIsAuthenticated: () => {},
-  isLoading: true,
-  error: null,
-  setError: () => {},
-  login: async () => {},
-  logout: async () => {},
-  refreshToken: async () => {}
+export const getRefreshToken = () => {
+  const token = localStorage.getItem('refreshToken');
+  debug('Token', 'Getting refresh token', { exists: !!token });
+  return token;
 };
 
-export const AuthContext = createContext(defaultContext);
+export const setAccessToken = (token) => {
+  debug('Token', 'Setting access token');
+  localStorage.setItem('accessToken', token);
+};
+
+export const setRefreshToken = (token) => {
+  debug('Token', 'Setting refresh token');
+  localStorage.setItem('refreshToken', token);
+};
+
+export const clearTokens = () => {
+  debug('Token', 'Clearing tokens');
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+};
+
+// Auth Provider Component
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Check authentication status
+  const checkAuth = useCallback(async () => {
+    debug('Auth', 'Checking authentication status');
+    try {
+      const response = await api.get('/auth/status', {
+        params: { skipPagination: true } // Skip pagination for auth status
+      });
+      debug('Auth', 'Auth status response', response.data);
+      setUser(response.data.user);
+      setError(null);
+      return true;
+    } catch (err) {
+      debug('Auth', 'Auth check failed', err);
+      setUser(null);
+      const errorMessage = err.response?.data?.message || 'Authentication failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Login function
+  const login = useCallback(async (email, password) => {
+    debug('Auth', 'Attempting login', { email });
+    try {
+      setLoading(true);
+      const response = await api.post('/auth/login', { email, password });
+      const { accessToken, refreshToken, user } = response.data;
+      
+      debug('Auth', 'Login successful', { user: { ...user, password: undefined } });
+      
+      setAccessToken(accessToken);
+      setRefreshToken(refreshToken);
+      setUser(user);
+      setError(null);
+      
+      return user;
+    } catch (err) {
+      debug('Auth', 'Login failed', err);
+      const errorMessage = err.response?.data?.message || 'Login failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Logout function
+  const logout = useCallback(async () => {
+    debug('Auth', 'Attempting logout');
+    try {
+      await logoutUser();
+      debug('Auth', 'Logout successful');
+      toast.success('Logged out successfully');
+    } catch (err) {
+      debug('Auth', 'Logout error', err);
+      toast.error('Error during logout');
+    } finally {
+      clearTokens();
+      setUser(null);
+      window.location.href = '/login';
+    }
+  }, []);
+
+  // Refresh token function
+  const refreshToken = useCallback(async () => {
+    debug('Auth', 'Attempting token refresh');
+    try {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) {
+        debug('Auth', 'No refresh token available');
+        throw new Error('No refresh token available');
+      }
+
+      const response = await api.post('/auth/refresh', { refreshToken });
+      const { accessToken, newRefreshToken } = response.data;
+      
+      debug('Auth', 'Token refresh successful');
+      
+      setAccessToken(accessToken);
+      if (newRefreshToken) {
+        setRefreshToken(newRefreshToken);
+      }
+      
+      return accessToken;
+    } catch (err) {
+      debug('Auth', 'Token refresh failed', err);
+      clearTokens();
+      setUser(null);
+      toast.error('Session expired. Please login again.');
+      throw err;
+    }
+  }, []);
+
+  // Check auth status on mount
+  useEffect(() => {
+    debug('Auth', 'Initial auth check');
+    const initAuth = async () => {
+      try {
+        await checkAuth();
+      } catch (error) {
+        debug('Auth', 'Initial auth check error', { error });
+        toast.error('Failed to check authentication status');
+      } finally {
+        setLoading(false);
+      }
+    };
+    initAuth();
+  }, [checkAuth]);
+
+  // Context value
+  const value = {
+    user,
+    loading,
+    error,
+    login,
+    logout,
+    refreshToken,
+    checkAuth
+  };
+
+  return (
+    <ErrorBoundary fallback={authErrorFallback}>
+      <AuthContext.Provider value={value}>
+        {children}
+      </AuthContext.Provider>
+    </ErrorBoundary>
+  );
+};
+
+// Custom hook to use auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    debug('Auth', 'useAuth called outside of AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 // Custom fallback for auth errors
 const authErrorFallback = (error, errorInfo) => (
@@ -47,148 +204,3 @@ const authErrorFallback = (error, errorInfo) => (
     </details>
   </div>
 );
-
-// Named export for the provider component
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const handleError = useCallback((err, defaultMessage) => {
-    const errorMessage = err.response?.data?.message || err.message || defaultMessage;
-    console.error(defaultMessage, err);
-    setError(errorMessage);
-    return errorMessage;
-  }, []);
-
-  const refreshToken = useCallback(async () => {
-    try {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const res = await api.post('/users/refresh-token', { refreshToken });
-      const { accessToken, refreshToken: newRefreshToken } = res.data;
-      
-      setTokens(accessToken, newRefreshToken);
-      return true;
-    } catch (err) {
-      handleError(err, 'Failed to refresh token');
-      clearTokens();
-      setIsAuthenticated(false);
-      setUser(null);
-      return false;
-    }
-  }, [handleError]);
-
-  const fetchProfile = useCallback(async () => {
-    try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('No access token available');
-      }
-
-      const res = await api.get("/users/profile");
-      
-      if (res.data?.user && typeof res.data.user === 'object') {
-        setUser(res.data.user);
-        setIsAuthenticated(true);
-        setError(null);
-      } else {
-        throw new Error('Invalid user data received');
-      }
-    } catch (err) {
-      if (err.response?.status === 401) {
-        // Token expired, try to refresh
-        const refreshed = await refreshToken();
-        if (refreshed) {
-          return fetchProfile();
-        }
-      }
-      handleError(err, 'Failed to fetch profile');
-      setUser(null);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshToken, handleError]);
-
-  const login = useCallback(async (credentials) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const res = await api.post('/users/login', credentials);
-      const { user, accessToken, refreshToken } = res.data;
-      
-      setTokens(accessToken, refreshToken);
-      setUser(user);
-      setIsAuthenticated(true);
-      return true;
-    } catch (err) {
-      handleError(err, 'Login failed');
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [handleError]);
-
-  const logout = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      await api.post("/users/logout");
-      clearTokens();
-      setUser(null);
-      setIsAuthenticated(false);
-      setError(null);
-    } catch (err) {
-      handleError(err, 'Logout failed');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [handleError]);
-
-  useEffect(() => {
-    const token = getToken();
-    if (token) {
-      fetchProfile();
-    } else {
-      setIsLoading(false);
-      setError(null);
-    }
-  }, [fetchProfile]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const contextValue = {
-    user,
-    setUser,
-    isAuthenticated,
-    setIsAuthenticated,
-    isLoading,
-    error,
-    setError,
-    login,
-    logout,
-    refreshToken
-  };
-
-  return (
-    <ErrorBoundary fallback={authErrorFallback}>
-      <AuthContext.Provider value={contextValue}>
-        {children}
-      </AuthContext.Provider>
-    </ErrorBoundary>
-  );
-}

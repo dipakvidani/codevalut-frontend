@@ -1,9 +1,29 @@
+import { clearTokens } from '../context/AuthContext';
+
+/**
+ * Handles user logout by clearing tokens and redirecting to login
+ */
 export const logoutUser = async () => {
-  // When called from the Axios interceptor (e.g., on 401 Unauthorized),
-  // the session is already considered invalid on the server-side or token expired.
-  // No need to make another API call here, just clear client state and redirect.
-  console.log("Automatically logging out due to unauthorized access or token expiry.");
-  // In a real app, you might also clear localStorage items if tokens were stored there.
-  window.location.href = "/login"; // Redirect to login page
+  try {
+    // Clear tokens from storage
+    clearTokens();
+    
+    // Clear any other auth-related data
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+    
+    // Clear any cookies
+    document.cookie.split(';').forEach(cookie => {
+      const [name] = cookie.split('=');
+      document.cookie = `${name.trim()}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+    });
+    
+    // Redirect to login page
+    window.location.href = '/login';
+  } catch (error) {
+    console.error('Error during logout:', error);
+    // Still redirect to login even if there's an error
+    window.location.href = '/login';
+  }
 };
   

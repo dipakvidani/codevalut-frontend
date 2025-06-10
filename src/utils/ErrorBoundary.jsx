@@ -1,33 +1,75 @@
-import React, { useState } from 'react';
+import React, { Component } from 'react';
 
-function ErrorBoundary({ children, fallback, onError }) {
-  const [errorState, setErrorState] = useState({ 
-    hasError: false, 
-    error: null, 
-    errorInfo: null 
-  });
+// Debug logger function
+const debugLog = (component, action, data = {}) => {
+  if (import.meta.env.DEV) {
+    console.log(`[${component}] ${action}`, data);
+  }
+};
 
-  if (errorState.hasError) {
-    // If a custom fallback is provided, use it
-    if (fallback) {
-      return fallback(errorState.error, errorState.errorInfo);
-    }
-
-    // Default error UI
-    return (
-      <div className="text-red-500 p-4 border border-red-500 rounded">
-        <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
-        <details className="whitespace-pre-wrap">
-          <summary>Error details</summary>
-          {errorState.error && errorState.error.toString()}
-          <br />
-          {errorState.errorInfo && errorState.errorInfo.componentStack}
-        </details>
-      </div>
-    );
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { 
+      hasError: false,
+      error: null,
+      errorInfo: null
+    };
+    debugLog('ErrorBoundary', 'Initialized', { props });
   }
 
-  return children;
+  static getDerivedStateFromError(error) {
+    debugLog('ErrorBoundary', 'getDerivedStateFromError', { error });
+    return { 
+      hasError: true,
+      error 
+    };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    debugLog('ErrorBoundary', 'componentDidCatch', { error, errorInfo });
+    this.setState({
+      error,
+      errorInfo
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      debugLog('ErrorBoundary', 'Rendering error UI', this.state);
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">
+              Something went wrong
+            </h2>
+            <div className="bg-red-50 p-4 rounded-md mb-4">
+              <p className="text-red-800 font-medium">
+                {this.state.error?.toString()}
+              </p>
+              {this.state.errorInfo && (
+                <pre className="mt-2 text-sm text-red-600 overflow-auto">
+                  {this.state.errorInfo.componentStack}
+                </pre>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                debugLog('ErrorBoundary', 'Reload button clicked');
+                window.location.reload();
+              }}
+              className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    debugLog('ErrorBoundary', 'Rendering children');
+    return this.props.children;
+  }
 }
 
 export default ErrorBoundary; 

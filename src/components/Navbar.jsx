@@ -1,90 +1,51 @@
-import React, { useContext } from "react";
-import { Link } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-export default function Navbar() {
-  const auth = useContext(AuthContext);
-
-  // Handle case where AuthContext is not available
-  if (!auth) {
-    console.error("AuthContext is not available in Navbar");
-    return (
-      <nav className="bg-gray-800 text-white px-6 py-4 flex justify-between items-center">
-        <Link to="/" className="text-xl font-bold">
-          CodeVault
-        </Link>
-        <div className="text-red-500">Authentication Error</div>
-      </nav>
-    );
-  }
-
-  const { isAuthenticated, user, logout, isLoading } = auth;
-
-  // Render nothing or a simplified loading state during authentication check
-  if (isLoading) {
-    return (
-      <nav className="bg-gray-800 text-white px-6 py-4 flex justify-between items-center">
-        <Link to="/" className="text-xl font-bold">
-          CodeVault
-        </Link>
-        <div className="animate-pulse">Loading...</div>
-      </nav>
-    );
-  }
-
-  // Safely get user display name
-  const getUserDisplayName = () => {
-    if (!user) return null;
-    if (typeof user.name === 'string' && user.name.trim()) return user.name;
-    if (typeof user.email === 'string' && user.email.trim()) return user.email;
-    return null;
-  };
-
-  const userDisplayName = getUserDisplayName();
+const Navbar = () => {
+  const { user, logout } = useAuth();
 
   return (
-    <nav className="bg-gray-800 text-white px-6 py-4 flex justify-between items-center">
-      <Link to="/" className="text-xl font-bold">
-        CodeVault
-      </Link>
-      <div className="space-x-4">
-        <Link to="/" className="hover:text-gray-300">
-          Home
-        </Link>
-        <Link to="/public-snippets" className="hover:text-gray-300">
-          Public Snippets
-        </Link>
-        {isAuthenticated && (
-          <Link to="/saved-snippets" className="hover:text-gray-300">
-            Saved Snippets
-          </Link>
-        )}
-        {isAuthenticated ? (
-          <>
-            <Link to="/profile" className="hover:text-gray-300">
-              Profile
+    <nav className="bg-white shadow-lg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <Link to="/" className="flex items-center">
+              <span className="text-xl font-bold text-gray-800">CodeVault</span>
             </Link>
-            {userDisplayName && (
-              <span className="text-gray-300">Welcome, {userDisplayName}!</span>
-            )}
+          </div>
+          <div className="flex items-center">
+            {user ? (
+              <>
+                <span className="text-gray-600 mr-4">Welcome, {user.email}</span>
             <button 
               onClick={logout} 
-              className="hover:text-gray-300 bg-red-600 px-3 py-1 rounded transition-colors"
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >
               Logout
             </button>
           </>
         ) : (
           <>
-            <Link to="/login" className="hover:text-gray-300">
+                <Link
+                  to="/login"
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2"
+                >
               Login
             </Link>
-            <Link to="/register" className="hover:text-gray-300">
+                <Link
+                  to="/register"
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
               Register
             </Link>
           </>
         )}
+          </div>
+        </div>
       </div>
     </nav>
   );
-}
+};
+
+export default Navbar;

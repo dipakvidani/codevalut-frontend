@@ -1,9 +1,22 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import PropTypes from "prop-types";
+import { toast } from 'react-toastify';
 import { isSnippetSaved, saveSnippetToLocalStorage, removeSnippetFromLocalStorage } from "../utils/localStorageService";
+
+// Lazy load code preview component
+const CodePreview = lazy(() => import('./CodePreview'));
+
+// Loading fallback for code preview
+const CodePreviewFallback = () => (
+  <div className="bg-gray-50 p-4 rounded text-sm overflow-auto border border-gray-200 animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+  </div>
+);
 
 export default function SnippetCard({ snippet, onEdit, onDelete }) {
   const [isSaved, setIsSaved] = React.useState(isSnippetSaved(snippet._id));
+  const [showPreview, setShowPreview] = React.useState(false);
 
   // Strict type checking
   if (!snippet || typeof snippet !== 'object') {
@@ -39,12 +52,29 @@ export default function SnippetCard({ snippet, onEdit, onDelete }) {
   }
 
   const handleSaveToggle = () => {
-    if (isSaved) {
-      removeSnippetFromLocalStorage(snippet._id);
-      setIsSaved(false);
-    } else {
-      saveSnippetToLocalStorage(snippet);
-      setIsSaved(true);
+    try {
+      if (isSaved) {
+        removeSnippetFromLocalStorage(snippet._id);
+        setIsSaved(false);
+        toast.success('Snippet removed from saved items');
+      } else {
+        saveSnippetToLocalStorage(snippet);
+        setIsSaved(true);
+        toast.success('Snippet saved successfully');
+      }
+    } catch (error) {
+      toast.error('Failed to update saved status');
+      console.error('Error updating saved status:', error);
+    }
+  };
+
+  const handleDelete = () => {
+    try {
+      onDelete(snippet._id);
+      toast.success('Snippet deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete snippet');
+      console.error('Error deleting snippet:', error);
     }
   };
 
@@ -70,9 +100,20 @@ export default function SnippetCard({ snippet, onEdit, onDelete }) {
         <span className="text-gray-500 text-sm">• Last Updated: {lastUpdated}</span>
       </div>
 
-      <pre className="bg-gray-50 p-4 rounded text-sm overflow-auto border border-gray-200">
-        <code className="font-mono">{code}</code>
-      </pre>
+      <div className="relative">
+        <button
+          onClick={() => setShowPreview(!showPreview)}
+          className="text-blue-500 hover:text-blue-600 text-sm mb-2"
+        >
+          {showPreview ? 'Hide Code' : 'Show Code'}
+        </button>
+        
+        {showPreview && (
+          <Suspense fallback={<CodePreviewFallback />}>
+            <CodePreview code={code} language={language} />
+          </Suspense>
+        )}
+      </div>
 
       <div className="mt-4 flex gap-2">
         <button
@@ -96,7 +137,7 @@ export default function SnippetCard({ snippet, onEdit, onDelete }) {
             {onDelete && (
               <button
                 className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                onClick={() => onDelete(snippet._id)}
+                onClick={handleDelete}
               >
                 Delete
               </button>

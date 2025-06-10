@@ -1,72 +1,87 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import App from './App.jsx'
-import { AuthProvider } from './context/AuthContext.jsx'
-import ErrorBoundary from './utils/ErrorBoundary.jsx'
+import App from './App'
+import { AuthProvider } from './context/AuthContext'
+import ErrorBoundary from './utils/ErrorBoundary'
+import DevConsole from './components/DevConsole'
 import './index.css'
 
-// Enable React development mode and error handling
+// Debug logger function
+const debugLog = (component, action, data = {}) => {
+  if (import.meta.env.DEV) {
+    console.log(`[${component}] ${action}`, data)
+  }
+}
+
+// Custom fallback UI for root-level errors
+const RootErrorFallback = ({ error, resetErrorBoundary }) => {
+  debugLog('RootErrorFallback', 'Rendering', { error })
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">
+          Application Error
+        </h2>
+        <div className="bg-red-50 p-4 rounded-md mb-4">
+          <p className="text-red-800 font-medium">
+            {error?.toString()}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            debugLog('RootErrorFallback', 'Reset button clicked')
+            resetErrorBoundary()
+          }}
+          className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Development mode error handling
 if (import.meta.env.DEV) {
-  console.log("Running in development mode");
-  // Enable React error overlay
   window.addEventListener('error', (event) => {
-    console.error('Global error caught:', event.error);
-  });
-  // Enable React error boundary
+    debugLog('GlobalError', 'Caught error', {
+      error: event.error,
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno
+    })
+  })
+
   window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
-  });
+    debugLog('UnhandledRejection', 'Caught promise rejection', {
+      reason: event.reason
+    })
+  })
 }
 
 // Create root element
-const rootElement = document.getElementById("root");
+const rootElement = document.getElementById('root')
 if (!rootElement) {
-  throw new Error("Root element not found");
+  debugLog('Main', 'Root element not found')
+  throw new Error('Root element not found')
 }
 
-// Create root with error handling
-const root = ReactDOM.createRoot(rootElement);
+// Initialize React
+debugLog('Main', 'Initializing React')
+const root = ReactDOM.createRoot(rootElement)
 
-// Custom fallback for root error boundary
-const rootErrorFallback = (error, errorInfo) => (
-  <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-    <div className="bg-white p-8 rounded-lg shadow-lg max-w-2xl w-full">
-      <h1 className="text-2xl font-bold text-red-600 mb-4">Application Error</h1>
-      <div className="bg-gray-50 p-4 rounded">
-        <details className="whitespace-pre-wrap">
-          <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
-            Error Details
-          </summary>
-          <div className="mt-2 text-sm">
-            <p className="font-semibold">Error:</p>
-            <p className="text-red-600">{error?.toString()}</p>
-            <p className="font-semibold mt-2">Component Stack:</p>
-            <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-auto">
-              {errorInfo?.componentStack}
-            </pre>
-          </div>
-        </details>
-      </div>
-      <button
-        onClick={() => window.location.reload()}
-        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-      >
-        Reload Page
-      </button>
-    </div>
-  </div>
-);
-
-// Render app with error boundary
+// Render the app
 root.render(
-  <ErrorBoundary fallback={rootErrorFallback}>
-    <React.StrictMode>
-      <BrowserRouter>
-        <AuthProvider>
+  <React.StrictMode>
+    <ErrorBoundary FallbackComponent={RootErrorFallback}>
+      <AuthProvider>
+        <BrowserRouter>
           <App />
-        </AuthProvider>
-      </BrowserRouter>
-    </React.StrictMode>
-  </ErrorBoundary>
-);
+          <DevConsole />
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
+  </React.StrictMode>
+)

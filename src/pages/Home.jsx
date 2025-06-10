@@ -1,21 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import api from "../services/api";
 import SnippetCard from "../components/SnippetCard";
 import SnippetForm from "../components/SnippetForm";
 import ErrorBoundary from "../utils/ErrorBoundary";
+import ApiTest from '../components/ApiTest';
 
 // Custom fallback for snippet list errors
 const snippetErrorFallback = (error, errorInfo) => (
-  <div className="text-red-500 p-4 border border-red-500 rounded">
+        <div className="text-red-500 p-4 border border-red-500 rounded">
     <h2 className="text-xl font-bold mb-2">Error Loading Snippets</h2>
-    <details className="whitespace-pre-wrap">
-      <summary>Error details</summary>
+          <details className="whitespace-pre-wrap">
+            <summary>Error details</summary>
       {error && error.toString()}
-      <br />
+            <br />
       {errorInfo && errorInfo.componentStack}
-    </details>
-  </div>
-);
+          </details>
+        </div>
+      );
 
 export default function Home() {
   const [snippets, setSnippets] = useState([]);
@@ -24,30 +25,64 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [editingSnippet, setEditingSnippet] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all', 'public', 'private'
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const fetchSnippets = useCallback(async (pageNum = 1, append = false) => {
+    try {
+      if (pageNum === 1) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+      
+      setError(null);
+      const res = await api.get("/snippets", {
+        params: {
+          page: pageNum,
+          limit: 10
+        }
+      });
+      
+      if (!res.data || !Array.isArray(res.data.snippets)) {
+        throw new Error("Invalid response structure from API");
+      }
+
+      const totalPages = res.data.totalPages || 1;
+      setHasMore(pageNum < totalPages);
+      setSnippets(prev => append ? [...prev, ...res.data.snippets] : res.data.snippets);
+    } catch (err) {
+      console.error("Failed to fetch snippets:", err);
+      setError("Failed to load snippets. Please try again later.");
+      setSnippets([]);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchSnippets = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const res = await api.get("/snippets");
-        
-        if (!res.data || !Array.isArray(res.data.snippets)) {
-          throw new Error("Invalid response structure from API");
-        }
-
-        setSnippets(res.data.snippets);
-      } catch (err) {
-        console.error("Failed to fetch snippets:", err);
-        setError("Failed to load snippets. Please try again later.");
-        setSnippets([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchSnippets();
-  }, []);
+  }, [fetchSnippets]);
+
+  const handleScroll = useCallback(() => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop
+      === document.documentElement.offsetHeight
+    ) {
+      if (!isLoading && !isLoadingMore && hasMore) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchSnippets(nextPage, true);
+      }
+    }
+  }, [isLoading, isLoadingMore, hasMore, page, fetchSnippets]);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   const handleCreateSnippet = async (snippetData) => {
     try {
@@ -95,6 +130,14 @@ export default function Home() {
   }
 
   return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Welcome to CodeVault</h1>
+      
+      {/* API Connection Test */}
+      <div className="mb-8">
+        <ApiTest />
+      </div>
+
     <div className="max-w-4xl mx-auto mt-6 px-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">My Snippets</h1>
@@ -132,23 +175,36 @@ export default function Home() {
         </div>
       )}
 
-      <ErrorBoundary fallback={snippetErrorFallback}>
+        <ErrorBoundary fallback={snippetErrorFallback}>
         {filteredSnippets.length === 0 ? (
           <p className="text-gray-500 text-center mt-4">No snippets found.</p>
         ) : (
-          <div className="space-y-4">
-            {filteredSnippets.map((snippet) => (
-              <ErrorBoundary key={snippet._id}>
-                <SnippetCard
-                  snippet={snippet}
-                  onEdit={() => setEditingSnippet(snippet)}
-                  onDelete={handleDeleteSnippet}
-                />
-              </ErrorBoundary>
-            ))}
-          </div>
+          <>
+            <div className="space-y-4">
+              {filteredSnippets.map((snippet) => (
+                <ErrorBoundary key={snippet._id}>
+                  <SnippetCard
+                    snippet={snippet}
+                    onEdit={() => setEditingSnippet(snippet)}
+                    onDelete={handleDeleteSnippet}
+                  />
+                </ErrorBoundary>
+              ))}
+            </div>
+            {isLoadingMore && (
+              <div className="flex justify-center mt-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+            {!hasMore && snippets.length > 0 && (
+              <div className="text-center mt-8 text-gray-500">
+                No more snippets to load
+              </div>
+            )}
+          </>
         )}
       </ErrorBoundary>
+      </div>
     </div>
   );
 }
