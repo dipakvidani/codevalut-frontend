@@ -1,167 +1,114 @@
-import React, { useEffect, useState } from "react";
-import api from "../services/api";
-import SnippetCard from "../components/SnippetCard";
-import SnippetForm from "../components/SnippetForm";
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
+import { debugLog } from '../utils/DevConsole';
 
-export default function Profile() {
-  const [snippets, setSnippets] = useState([]);
-  const [editingSnippet, setEditingSnippet] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState('all'); // 'all', 'public', 'private'
-
-  const fetchSnippets = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await api.get("/snippets/");
-      const fetchedData = Array.isArray(res.data.snippets) ? res.data.snippets : [];
-      setSnippets(fetchedData);
-    } catch (error) {
-      console.error("Failed to fetch snippets:", error);
-      setError("Failed to load snippets. Please try again later.");
-      setSnippets([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+const Profile = () => {
+  const { user, updateProfile } = useAuth();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchSnippets();
-  }, []);
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+      });
+    }
+  }, [user]);
 
-  const handleCreateOrUpdate = async (data) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
     try {
-      if (editingSnippet) {
-        await api.put(`/snippets/${editingSnippet._id}`, data);
-        setEditingSnippet(null);
-      } else {
-        await api.post("/snippets", data);
-      }
-      await fetchSnippets();
-      setShowForm(false);
+      debugLog('Profile', 'Updating profile', { formData });
+      await updateProfile(formData);
+      toast.success('Profile updated successfully');
     } catch (error) {
-      console.error("Failed to save snippet:", error);
-      setError("Failed to save snippet. Please try again.");
+      debugLog('Profile', 'Profile update failed', { error });
+      toast.error(error.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await api.delete(`/snippets/${id}`);
-      await fetchSnippets();
-    } catch (error) {
-      console.error("Failed to delete snippet:", error);
-      setError("Failed to delete snippet. Please try again.");
-    }
-  };
-
-  const handleEdit = (snippet) => {
-    setEditingSnippet(snippet);
-    setShowForm(true);
-  };
-
-  const handleCancel = () => {
-    setEditingSnippet(null);
-    setShowForm(false);
-  };
-
-  const handleToggleVisibility = async (snippet) => {
-    try {
-      const updatedData = {
-        ...snippet,
-        isPublic: !snippet.isPublic
-      };
-      await api.put(`/snippets/${snippet._id}`, updatedData);
-      await fetchSnippets();
-    } catch (error) {
-      console.error("Failed to toggle visibility:", error);
-      setError("Failed to update snippet visibility. Please try again.");
-    }
-  };
-
-  const filteredSnippets = snippets.filter(snippet => {
-    if (filter === 'all') return true;
-    if (filter === 'public') return snippet.isPublic;
-    if (filter === 'private') return !snippet.isPublic;
-    return true;
-  });
-
-  if (isLoading) {
-    return <div className="text-center mt-8">Loading snippets...</div>;
+  if (!user) {
+    return null;
   }
 
   return (
-    <div className="max-w-4xl mx-auto mt-6 px-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">My Snippets</h1>
-        <div className="flex gap-4">
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-1 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">All Snippets</option>
-            <option value="public">Public Only</option>
-            <option value="private">Private Only</option>
-          </select>
-          <button
-            onClick={() => {
-              if (showForm) {
-                handleCancel();
-              } else {
-                setShowForm(true);
-                setEditingSnippet(null);
-              }
-            }}
-            className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 transition-colors"
-          >
-            {showForm ? 'Cancel' : 'New Snippet'}
-          </button>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white shadow sm:rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                Profile Information
+              </h3>
+              <div className="mt-2 max-w-xl text-sm text-gray-500">
+                <p>Update your account's profile information.</p>
+              </div>
+              <form onSubmit={handleSubmit} className="mt-5 space-y-6">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    Name
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      type="text"
+                      name="name"
+                      id="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      type="email"
+                      name="email"
+                      id="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                  >
+                    {loading ? 'Saving...' : 'Save changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       </div>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
-      {showForm && (
-        <div className="mb-6">
-          <SnippetForm
-            onSubmit={handleCreateOrUpdate}
-            initialData={editingSnippet}
-          />
-        </div>
-      )}
-
-      {filteredSnippets.length === 0 ? (
-        <p className="text-gray-500 text-center mt-4">No snippets found.</p>
-      ) : (
-        <div className="space-y-4">
-          {filteredSnippets.map((snippet) => (
-            <div key={snippet._id} className="relative">
-              <SnippetCard
-                snippet={snippet}
-                onEdit={() => handleEdit(snippet)}
-                onDelete={handleDelete}
-              />
-              <button
-                onClick={() => handleToggleVisibility(snippet)}
-                className={`absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  snippet.isPublic
-                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                }`}
-              >
-                {snippet.isPublic ? 'Public' : 'Private'}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
-}
+};
+
+export default Profile;

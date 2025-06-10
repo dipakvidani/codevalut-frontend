@@ -1,18 +1,27 @@
 import axios from "axios";
 import { logoutUser } from "../utils/logoutHandler";
+import { debugLog } from '../utils/DevConsole';
 
-// Debug logger
-const debug = (component, action, data = null) => {
+// Get backend URL based on environment
+const getBackendUrl = () => {
+  // In development, use a proxy to avoid CORS issues
   if (import.meta.env.DEV) {
-    console.log(`[API:${component}] ${action}`, data || '');
+    const url = '/proxy-api';
+    debugLog('API:Config', 'Using development proxy URL', { url });
+    return url;
   }
+  
+  // In production, use the full URL
+  const url = import.meta.env.VITE_API_URL || 'https://codevault-backend-zfhm.onrender.com/api/v1';
+  debugLog('API:Config', 'Using production API URL', { url });
+  return url;
 };
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://codevault-backend-zfhm.onrender.com/api/v1',
+  baseURL: getBackendUrl(),
   timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000'),
-  withCredentials: true, // Enables cookie-based auth
+  withCredentials: true, // Enable credentials for cookies
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -38,7 +47,7 @@ const addPaginationParams = (config) => {
 
 // Log API configuration in development
 if (import.meta.env.DEV) {
-  debug('Config', 'API Configuration', {
+  debugLog('Config', 'API Configuration', {
     baseURL: api.defaults.baseURL,
     timeout: api.defaults.timeout,
     withCredentials: api.defaults.withCredentials,
@@ -50,29 +59,35 @@ if (import.meta.env.DEV) {
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Add timestamp to prevent caching
-    if (config.method === 'get') {
-      config.params = {
-        ...config.params,
-        _t: Date.now()
-      };
-    }
+    // Get token from localStorage
+    const token = localStorage.getItem('accessToken');
     
     // Log request in development
     if (import.meta.env.DEV) {
-      console.log('[API:Request]', config.method.toUpperCase(), config.url, {
+      debugLog('API', 'Making request', {
+        method: config.method,
+        url: config.url,
+        baseURL: config.baseURL,
         headers: config.headers,
+        data: config.data,
         params: config.params,
-        data: config.data
+        fullUrl: `${config.baseURL}${config.url}`,
+        hasToken: !!token
       });
+    }
+
+    // Add token to headers if it exists
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     
     return config;
   },
   (error) => {
-    if (import.meta.env.DEV) {
-      console.error('[API:Request] Error:', error);
-    }
+    debugLog('API', 'Request error', {
+      message: error.message,
+      config: error.config
+    });
     return Promise.reject(error);
   }
 );
@@ -82,24 +97,55 @@ api.interceptors.response.use(
   (response) => {
     // Log response in development
     if (import.meta.env.DEV) {
-      console.log('[API:Response]', response.status, response.config.url, {
+      debugLog('API', 'Response received', {
+        status: response.status,
+        url: response.config.url,
         data: response.data,
-        headers: response.headers
+        headers: response.headers,
+        requestMethod: response.config.method,
+        requestUrl: response.config.url,
+        baseURL: response.config.baseURL,
+        fullUrl: `${response.config.baseURL}${response.config.url}`
       });
     }
     return response;
   },
   async (error) => {
-    if (import.meta.env.DEV) {
-      console.error('[API:Error]', error.response?.status, error.config?.url, {
-        message: error.message,
-        response: error.response?.data,
-        headers: error.response?.headers
+    const config = error.config;
+
+    debugLog('API', 'Response error', {
+      status: error.response?.status,
+      url: error.config?.url,
+      message: error.message,
+      response: error.response?.data,
+      headers: error.response?.headers,
+      config: {
+        baseURL: error.config?.baseURL,
+        url: error.config?.url,
+        method: error.config?.method,
+        retryCount: error.config?.retryCount,
+        fullUrl: `${error.config?.baseURL}${error.config?.url}`
+      }
+    });
+
+    // Handle 404 errors
+    if (error.response?.status === 404) {
+      debugLog('API', 'Endpoint not found', {
+        url: error.config.url,
+        method: error.config.method,
+        baseURL: error.config.baseURL,
+        fullUrl: `${error.config.baseURL}${error.config.url}`
       });
+      return Promise.reject(new Error('Service endpoint not found. Please check if the backend is running and the API endpoints are correctly implemented.'));
     }
 
     // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
+      debugLog('API', 'Unauthorized error', {
+        url: error.config.url,
+        headers: error.response.headers
+      });
+      
       // Clear any stored tokens
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
@@ -108,17 +154,89 @@ api.interceptors.response.use(
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
+      return Promise.reject(new Error('Session expired. Please login again.'));
     }
 
-    // Handle 404 errors for auth status
-    if (error.response?.status === 404 && error.config?.url.includes('/auth/status')) {
-      // This is expected for unauthenticated users
-      return Promise.resolve({ data: { user: null } });
+    // Handle 429 Rate Limit errors
+    if (error.response?.status === 429) {
+      const retryAfter = error.response.headers['retry-after'];
+      debugLog('API', 'Rate limit exceeded', {
+        retryAfter,
+        url: error.config.url
+      });
+      return Promise.reject(new Error(`Too many requests. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`));
     }
 
+    // Handle validation errors
+    if (error.response?.status === 400 && error.response?.data?.errors) {
+      const validationErrors = error.response.data.errors;
+      debugLog('API', 'Validation error', {
+        errors: validationErrors,
+        url: error.config.url
+      });
+      return Promise.reject(new Error(validationErrors.map(err => err.msg).join(', ')));
+    }
+
+    // Handle other errors
     return Promise.reject(error);
   }
 );
+
+// Auth API
+export const authAPI = {
+  register: async (userData) => {
+    const response = await api.post('/users/register', userData);
+    return response.data;
+  },
+  login: async (credentials) => {
+    const response = await api.post('/users/login', credentials);
+    return response.data;
+  },
+  logout: async () => {
+    const response = await api.post('/users/logout');
+    return response.data;
+  },
+  getProfile: async () => {
+    const response = await api.get('/users/profile');
+    return response.data;
+  },
+  updateProfile: async (userData) => {
+    const response = await api.put('/users/profile', userData);
+    return response.data;
+  }
+};
+
+// Snippets API
+export const snippetsAPI = {
+  create: async (snippetData) => {
+    const response = await api.post('/snippets', snippetData);
+    return response.data;
+  },
+  getAll: async (params = {}) => {
+    const response = await api.get('/snippets', { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/snippets/${id}`);
+    return response.data;
+  },
+  update: async (id, snippetData) => {
+    const response = await api.put(`/snippets/${id}`, snippetData);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/snippets/${id}`);
+    return response.data;
+  },
+  like: async (id) => {
+    const response = await api.post(`/snippets/${id}/like`);
+    return response.data;
+  },
+  fork: async (id) => {
+    const response = await api.post(`/snippets/${id}/fork`);
+    return response.data;
+  }
+};
 
 export default api;
 

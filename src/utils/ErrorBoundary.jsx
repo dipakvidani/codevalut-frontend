@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React from 'react';
 
 // Debug logger function
 const debugLog = (component, action, data = {}) => {
@@ -7,67 +7,65 @@ const debugLog = (component, action, data = {}) => {
   }
 };
 
-class ErrorBoundary extends Component {
+class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false,
-      error: null,
-      errorInfo: null
-    };
+    this.state = { hasError: false, error: null, errorInfo: null };
     debugLog('ErrorBoundary', 'Initialized', { props });
   }
 
   static getDerivedStateFromError(error) {
-    debugLog('ErrorBoundary', 'getDerivedStateFromError', { error });
-    return { 
-      hasError: true,
-      error 
-    };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    debugLog('ErrorBoundary', 'componentDidCatch', { error, errorInfo });
     this.setState({
       error,
       errorInfo
     });
+    debugLog('ErrorBoundary', 'Caught error', { error, errorInfo });
   }
 
   render() {
+    debugLog('ErrorBoundary', 'Rendering children', {});
+    
     if (this.state.hasError) {
-      debugLog('ErrorBoundary', 'Rendering error UI', this.state);
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">
-              Something went wrong
-            </h2>
-            <div className="bg-red-50 p-4 rounded-md mb-4">
-              <p className="text-red-800 font-medium">
-                {this.state.error?.toString()}
+          <div className="max-w-md w-full space-y-8 p-8">
+            <div>
+              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                Something went wrong
+              </h2>
+              <p className="mt-2 text-center text-sm text-gray-600">
+                {this.state.error?.message || 'An unexpected error occurred'}
               </p>
-              {this.state.errorInfo && (
-                <pre className="mt-2 text-sm text-red-600 overflow-auto">
-                  {this.state.errorInfo.componentStack}
-                </pre>
-              )}
             </div>
-            <button
-              onClick={() => {
-                debugLog('ErrorBoundary', 'Reload button clicked');
-                window.location.reload();
-              }}
-              className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
-            >
-              Reload Page
-            </button>
+            <div className="mt-8 bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Error Details</h3>
+                  <div className="mt-2 text-sm text-gray-500">
+                    <pre className="whitespace-pre-wrap overflow-x-auto">
+                      {this.state.error?.stack}
+                    </pre>
+                  </div>
+                </div>
+                <div>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Reload Page
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       );
     }
 
-    debugLog('ErrorBoundary', 'Rendering children');
     return this.props.children;
   }
 }

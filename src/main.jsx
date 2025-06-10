@@ -3,85 +3,71 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
-import ErrorBoundary from './utils/ErrorBoundary'
-import DevConsole from './components/DevConsole'
 import './index.css'
+import { debugLog } from './utils/DevConsole'
 
-// Debug logger function
-const debugLog = (component, action, data = {}) => {
-  if (import.meta.env.DEV) {
-    console.log(`[${component}] ${action}`, data)
-  }
-}
-
-// Custom fallback UI for root-level errors
+// Error boundary component for root-level errors
 const RootErrorFallback = ({ error, resetErrorBoundary }) => {
-  debugLog('RootErrorFallback', 'Rendering', { error })
+  debugLog('Root', 'Error boundary caught error', { error })
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold text-red-600 mb-4">
-          Application Error
-        </h2>
-        <div className="bg-red-50 p-4 rounded-md mb-4">
-          <p className="text-red-800 font-medium">
-            {error?.toString()}
+      <div className="max-w-md w-full space-y-8 p-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Something went wrong
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            {error.message}
           </p>
         </div>
-        <button
-          onClick={() => {
-            debugLog('RootErrorFallback', 'Reset button clicked')
-            resetErrorBoundary()
-          }}
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
-        >
-          Try Again
-        </button>
+        <div className="mt-8">
+          <button
+            onClick={resetErrorBoundary}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
-// Development mode error handling
-if (import.meta.env.DEV) {
-  window.addEventListener('error', (event) => {
-    debugLog('GlobalError', 'Caught error', {
-      error: event.error,
-      message: event.message,
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno
-    })
-  })
-
-  window.addEventListener('unhandledrejection', (event) => {
-    debugLog('UnhandledRejection', 'Caught promise rejection', {
-      reason: event.reason
-    })
-  })
-}
-
-// Create root element
-const rootElement = document.getElementById('root')
-if (!rootElement) {
-  debugLog('Main', 'Root element not found')
-  throw new Error('Root element not found')
+// Global error handler
+const handleError = (error) => {
+  debugLog('Global', 'Unhandled error caught', { error })
+  // You can add additional error reporting here
 }
 
 // Initialize React
 debugLog('Main', 'Initializing React')
-const root = ReactDOM.createRoot(rootElement)
+const rootElement = document.getElementById('root')
+
+if (!rootElement) {
+  throw new Error('Root element not found')
+}
 
 // Render the app
-root.render(
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <ErrorBoundary FallbackComponent={RootErrorFallback}>
+    <BrowserRouter future={{ 
+      v7_relativeSplatPath: true,
+      v7_startTransition: true 
+    }}>
       <AuthProvider>
-        <BrowserRouter>
-          <App />
-          <DevConsole />
-        </BrowserRouter>
+        <App />
       </AuthProvider>
-    </ErrorBoundary>
+    </BrowserRouter>
   </React.StrictMode>
 )
+
+// Add global error handlers in development
+if (import.meta.env.DEV) {
+  window.addEventListener('error', (event) => {
+    handleError(event.error)
+  })
+
+  window.addEventListener('unhandledrejection', (event) => {
+    handleError(event.reason)
+  })
+}
