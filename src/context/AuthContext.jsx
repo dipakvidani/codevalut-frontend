@@ -122,12 +122,48 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (userData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      debugLog('Auth', 'Attempting registration', { email: userData.email });
+
+      const response = await api.post('/users/register', userData);
+      debugLog('Auth', 'Registration response data', response.data);
+
+      const { user, token, refreshToken, message } = response.data;
+
+      if (!user || !token) {
+        throw new Error(message || 'Invalid registration response: Missing user data or token');
+      }
+
+      localStorage.setItem('accessToken', token);
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
+      setUser(user);
+      debugLog('Auth', 'Registration successful', { user });
+      navigate('/dashboard', { replace: true });
+      return user;
+    } catch (error) {
+      debugLog('Auth', 'Registration failed', { error });
+      setUser(null);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      setError(error.response?.data?.message || error.message || 'Registration failed');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading,
     error,
     login,
-    logout
+    logout,
+    register
   };
 
   if (loading) {

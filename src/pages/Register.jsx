@@ -69,17 +69,21 @@ const Register = () => {
       navigate("/dashboard");
     } catch (error) {
       debugLog('Register', 'Registration error', error);
-      
-      if (error.message.includes("already exists")) {
-        toast.error("An account with this email or username already exists");
-      } else if (error.message.includes("timeout")) {
+
+      const errorMessage = error.response?.data?.message || error.message;
+
+      if (error.response && error.response.status === 400) {
+        if (errorMessage.includes("already exists")) {
+          toast.error("An account with this email or username already exists.");
+        } else {
+          toast.error(errorMessage || "Invalid registration data provided.");
+        }
+      } else if (errorMessage.includes("timeout")) {
         toast.error("Connection timed out. Please check your internet connection and try again.");
-      } else if (error.message.includes("Unable to connect")) {
-        toast.error("Unable to connect to the server. Please check your internet connection.");
-      } else if (error.message.includes("CORS")) {
-        toast.error("Unable to connect to the API. Please check if the backend is running.");
+      } else if (errorMessage.includes("Unable to connect") || error.code === 'ERR_NETWORK') {
+        toast.error("Unable to connect to the server. Please check your internet connection or if the backend is running.");
       } else {
-        toast.error(error.message || "An error occurred during registration");
+        toast.error(errorMessage || "An unexpected error occurred during registration.");
       }
     } finally {
       setLoading(false);
