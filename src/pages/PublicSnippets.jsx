@@ -20,9 +20,9 @@ const PublicSnippets = () => {
   const fetchPublicSnippets = async () => {
     try {
       debugLog('PublicSnippets', 'Fetching public snippets');
-      setLoading(true);
+        setLoading(true);
       setError(null);
-
+      
       const response = await api.get('/snippets/public');
       debugLog('PublicSnippets', 'Public snippets response', response.data);
       
@@ -117,12 +117,12 @@ const PublicSnippets = () => {
                         {tag}
                       </span>
                     ))}
-                  </div>
+            </div>
                   {snippet.updatedAt && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                       Last Updated: {new Date(snippet.updatedAt).toLocaleDateString()} at {new Date(snippet.updatedAt).toLocaleTimeString()}
                     </p>
-                  )}
+          )}
                 </div>
               ))}
             </div>

@@ -58,11 +58,11 @@ ReactDOM.createRoot(rootElement).render(
       v7_startTransition: true 
     }}>
       <ThemeProvider>
-        <AuthProvider>
-          <Suspense fallback={<LoadingSpinner />}>
-            <App />
-          </Suspense>
-        </AuthProvider>
+      <AuthProvider>
+        <Suspense fallback={<LoadingSpinner />}>
+          <App />
+        </Suspense>
+      </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>

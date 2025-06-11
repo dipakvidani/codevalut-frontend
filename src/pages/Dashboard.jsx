@@ -13,6 +13,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all', 'public', 'private'
   const [searchQuery, setSearchQuery] = useState('');
+  const [languageFilter, setLanguageFilter] = useState('all'); // New state for language filter
   const [showForm, setShowForm] = useState(false);
   const [editingSnippet, setEditingSnippet] = useState(null);
 
@@ -168,9 +169,11 @@ const Dashboard = () => {
         snippet.description.toLowerCase().includes(lowerCaseSearchQuery) ||
         (Array.isArray(snippet.tags) && snippet.tags.some(tag => tag.toLowerCase().includes(lowerCaseSearchQuery)));
 
-      return matchesFilter && matchesSearch;
+      const matchesLanguage = languageFilter === 'all' || snippet.language.toLowerCase() === languageFilter.toLowerCase(); // New language filter logic
+
+      return matchesFilter && matchesSearch && matchesLanguage;
     });
-  }, [snippets, filter, searchQuery]);
+  }, [snippets, filter, searchQuery, languageFilter]); // Add languageFilter to dependencies
 
   if (loading && snippets.length === 0) {
     return <LoadingSpinner />;
@@ -238,6 +241,22 @@ const Dashboard = () => {
                 <option value="all" className="text-gray-900 dark:text-white">All Snippets</option>
                 <option value="public" className="text-gray-900 dark:text-white">Public</option>
                 <option value="private" className="text-gray-900 dark:text-white">Private</option>
+              </select>
+              <select
+                value={languageFilter}
+                onChange={(e) => setLanguageFilter(e.target.value)}
+                className="input px-4 py-2 border rounded-md ml-4 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="all" className="text-gray-900 dark:text-white">All Languages</option>
+                <option value="javascript" className="text-gray-900 dark:text-white">JavaScript</option>
+                <option value="python" className="text-gray-900 dark:text-white">Python</option>
+                <option value="java" className="text-gray-900 dark:text-white">Java</option>
+                <option value="cpp" className="text-gray-900 dark:text-white">C++</option>
+                <option value="csharp" className="text-gray-900 dark:text-white">C#</option>
+                <option value="php" className="text-gray-900 dark:text-white">PHP</option>
+                <option value="ruby" className="text-gray-900 dark:text-white">Ruby</option>
+                <option value="swift" className="text-gray-900 dark:text-white">Swift</option>
+                <option value="go" className="text-gray-900 dark:text-white">Go</option>
               </select>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

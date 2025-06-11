@@ -101,7 +101,7 @@ const Navbar = () => {
                   className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
                 >
                   Register
-                </Link>
+            </Link>
               </>
             )}
           </div>
@@ -173,7 +173,7 @@ const Navbar = () => {
                 >
                   Public Snippets
                 </Link>
-                <button
+                <button 
                   onClick={handleLogout}
                   className="w-full text-left bg-indigo-600 text-white px-4 py-2 rounded-md text-base font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
                 >

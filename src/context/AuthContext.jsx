@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await api.get('/users/profile');
           if (response.data) {
-            setUser(response.data);
+          setUser(response.data);
             debugLog('Auth', 'User profile fetched successfully', { user: response.data });
           } else {
             throw new Error('Invalid user profile data received');
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
       if (!user || !token) {
         throw new Error(message || 'Invalid login response: Missing user data or token');
       }
-
+      
       localStorage.setItem('accessToken', token);
       if (refreshToken) {
         localStorage.setItem('refreshToken', refreshToken);
@@ -127,7 +127,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       debugLog('Auth', 'Attempting registration', { email: userData.email });
-
+      
       const response = await api.post('/users/register', userData);
       debugLog('Auth', 'Registration response data', response.data);
 
