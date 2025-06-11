@@ -20,7 +20,7 @@ const getBackendUrl = () => {
 // Create axios instance with default config
 const api = axios.create({
   baseURL: getBackendUrl(),
-  timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000'),
+  timeout: 15000, // Reduced timeout to 15 seconds
   withCredentials: true, // Enable credentials for cookies
   headers: {
     'Content-Type': 'application/json',
@@ -59,10 +59,8 @@ if (import.meta.env.DEV) {
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Get token from localStorage
     const token = localStorage.getItem('accessToken');
     
-    // Log request in development
     if (import.meta.env.DEV) {
       debugLog('API', 'Making request', {
         method: config.method,
@@ -76,18 +74,15 @@ api.interceptors.request.use(
       });
     }
 
-    // Add token to headers if it exists
-    if (token) {
+    // Only add token if it exists and the request is not for login/register
+    if (token && !config.url.includes('/users/login') && !config.url.includes('/users/register')) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
     return config;
   },
   (error) => {
-    debugLog('API', 'Request error', {
-      message: error.message,
-      config: error.config
-    });
+    debugLog('API', 'Request error', error);
     return Promise.reject(error);
   }
 );
@@ -95,17 +90,11 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
-    // Log response in development
     if (import.meta.env.DEV) {
       debugLog('API', 'Response received', {
         status: response.status,
         url: response.config.url,
-        data: response.data,
-        headers: response.headers,
-        requestMethod: response.config.method,
-        requestUrl: response.config.url,
-        baseURL: response.config.baseURL,
-        fullUrl: `${response.config.baseURL}${response.config.url}`
+        data: response.data
       });
     }
     return response;
@@ -117,40 +106,25 @@ api.interceptors.response.use(
       status: error.response?.status,
       url: error.config?.url,
       message: error.message,
-      response: error.response?.data,
-      headers: error.response?.headers,
-      config: {
-        baseURL: error.config?.baseURL,
-        url: error.config?.url,
-        method: error.config?.method,
-        retryCount: error.config?.retryCount,
-        fullUrl: `${error.config?.baseURL}${error.config?.url}`
-      }
+      response: error.response?.data
     });
 
-    // Handle 404 errors
-    if (error.response?.status === 404) {
-      debugLog('API', 'Endpoint not found', {
-        url: error.config.url,
-        method: error.config.method,
-        baseURL: error.config.baseURL,
-        fullUrl: `${error.config.baseURL}${error.config.url}`
-      });
-      return Promise.reject(new Error('Service endpoint not found. Please check if the backend is running and the API endpoints are correctly implemented.'));
+    // Handle timeout errors
+    if (error.code === 'ECONNABORTED') {
+      return Promise.reject(new Error('Request timed out. Please check your internet connection and try again.'));
     }
 
     // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
-      debugLog('API', 'Unauthorized error', {
-        url: error.config.url,
-        headers: error.response.headers
-      });
-      
-      // Clear any stored tokens
+      // Don't treat login/register requests as session expiration
+      if (config.url.includes('/users/login') || config.url.includes('/users/register')) {
+        return Promise.reject(new Error(error.response?.data?.message || 'Invalid credentials'));
+      }
+
+      // For other requests, handle as session expiration
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       
-      // Redirect to login if not already there
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }

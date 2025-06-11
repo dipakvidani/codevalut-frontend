@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import './index.css'
 import { debugLog } from './utils/DevConsole'
 import LoadingSpinner from './components/LoadingSpinner'
@@ -56,11 +57,13 @@ ReactDOM.createRoot(rootElement).render(
       v7_relativeSplatPath: true,
       v7_startTransition: true 
     }}>
-      <Suspense fallback={<LoadingSpinner />}>
+      <ThemeProvider>
         <AuthProvider>
-          <App />
+          <Suspense fallback={<LoadingSpinner />}>
+            <App />
+          </Suspense>
         </AuthProvider>
-      </Suspense>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
 )

@@ -1,83 +1,75 @@
-import React, { lazy, Suspense } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
+// Components
+import Navbar from './components/Navbar';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import NotFound from './pages/NotFound';
+import PublicSnippets from './pages/PublicSnippets';
 import { useAuth } from './context/AuthContext';
-import LoadingSpinner from './components/LoadingSpinner';
 import { debugLog } from './utils/DevConsole';
 
-// Lazy load components
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const Profile = lazy(() => import('./pages/Profile'));
-const NotFound = lazy(() => import('./pages/NotFound'));
-
-// Memoized Protected Route component
-const ProtectedRoute = React.memo(({ children }) => {
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  
-  debugLog('ProtectedRoute', 'Checking auth state', {
-    hasUser: !!user,
-    loading,
-    path: window.location.pathname
-  });
+  debugLog('ProtectedRoute', 'Checking auth state', { hasUser: !!user, loading, path: window.location.pathname });
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
       </div>
     );
   }
 
   if (!user) {
-    debugLog('ProtectedRoute', 'Access denied, redirecting to login');
+    debugLog('ProtectedRoute', 'Access denied', { path: window.location.pathname });
     return <Navigate to="/login" replace />;
   }
 
-  debugLog('ProtectedRoute', 'Access granted');
+  debugLog('ProtectedRoute', 'Access granted', { path: window.location.pathname });
   return children;
-});
+};
 
-// Memoized Public Route component
-const PublicRoute = React.memo(({ children }) => {
+// Public Route Component (for login, register, etc.)
+const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  
-  debugLog('PublicRoute', 'Checking auth state', {
-    hasUser: !!user,
-    loading,
-    path: window.location.pathname
-  });
+  debugLog('PublicRoute', 'Checking auth state', { hasUser: !!user, loading, path: window.location.pathname });
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
       </div>
     );
   }
 
   if (user) {
-    debugLog('PublicRoute', 'User already authenticated, redirecting to dashboard');
+    debugLog('PublicRoute', 'Redirecting to dashboard', { path: window.location.pathname });
     return <Navigate to="/dashboard" replace />;
   }
 
   debugLog('PublicRoute', 'Access granted', { path: window.location.pathname });
-  return <>{children}</>;
-});
+  return children;
+};
 
-function App() {
+const App = () => {
   debugLog('App', 'Rendering');
-  
+
   return (
-    <>
-      <Suspense fallback={<LoadingSpinner />}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <Navbar />
+      <main className="container mx-auto px-4 py-8">
         <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* Public Routes */}
           <Route
             path="/login"
             element={
@@ -110,8 +102,14 @@ function App() {
               </PublicRoute>
             }
           />
+          <Route
+            path="/public-snippets"
+            element={
+              <PublicSnippets />
+            }
+          />
           
-          {/* Protected routes */}
+          {/* Protected Routes */}
           <Route
             path="/dashboard"
             element={
@@ -120,20 +118,11 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
           
-          {/* 404 route */}
+          {/* 404 Route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </Suspense>
-      
+      </main>
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -144,10 +133,9 @@ function App() {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme="light"
       />
-    </>
+    </div>
   );
-}
+};
 
-export default React.memo(App);
+export default App;

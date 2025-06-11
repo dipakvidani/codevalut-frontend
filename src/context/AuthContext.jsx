@@ -19,124 +19,6 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Define all functions first
-  const login = async (email, password) => {
-    try {
-      setLoading(true);
-      setError(null);
-      debugLog('Auth', 'Attempting login', { email });
-      
-      const response = await api.post('/users/login', { email, password });
-      debugLog('Auth', 'Login response data', response.data);
-      
-      const { user, token, refreshToken, message } = response.data;
-      
-      if (!user || !token) {
-        throw new Error(message || 'Invalid login response: Missing user data or token');
-      }
-
-      localStorage.setItem('accessToken', token);
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
-      }
-      
-      setUser(user);
-      debugLog('Auth', 'Login successful', { user });
-      
-      navigate('/dashboard', { replace: true });
-      return user;
-    } catch (error) {
-      debugLog('Auth', 'Login failed', { error });
-      setUser(null);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      setError(error.response?.data?.message || error.message || 'Login failed');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (userData) => {
-    try {
-      setLoading(true);
-      setError(null);
-      debugLog('Auth', 'Attempting registration', { userData });
-      
-      const response = await api.post('/users/register', userData);
-      const { user, token, refreshToken, message } = response.data;
-      
-      if (!user || !token) {
-        throw new Error(message || 'Invalid registration response: Missing user data or token');
-      }
-      
-      localStorage.setItem('accessToken', token);
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
-      }
-      
-      setUser(user);
-      debugLog('Auth', 'Registration successful', { user });
-      
-      navigate('/dashboard', { replace: true });
-      return user;
-    } catch (error) {
-      debugLog('Auth', 'Registration failed', { error });
-      setError(error.response?.data?.message || error.message || 'Registration failed');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      setLoading(true);
-      debugLog('Auth', 'Attempting logout');
-      
-      await api.post('/users/logout').catch(err => 
-        debugLog('Auth', 'Backend logout failed (non-critical)', err)
-      );
-      
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      setUser(null);
-      
-      debugLog('Auth', 'Logout successful');
-      navigate('/login', { replace: true });
-    } catch (error) {
-      debugLog('Auth', 'Logout error', { error });
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateProfile = async (profileData) => {
-    try {
-      setLoading(true);
-      setError(null);
-      debugLog('Auth', 'Updating profile', { profileData });
-      
-      const response = await api.put('/users/profile', profileData);
-      const updatedUser = response.data;
-      
-      if (!updatedUser) {
-        throw new Error('Invalid profile update response');
-      }
-      
-      setUser(updatedUser);
-      debugLog('Auth', 'Profile update successful', { user: updatedUser });
-      return updatedUser;
-    } catch (error) {
-      debugLog('Auth', 'Profile update failed', { error });
-      setError(error.response?.data?.message || error.message || 'Failed to update profile');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
@@ -180,16 +62,81 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, [navigate]);
 
-  // Create value object after all functions are defined
+  const login = async (email, password) => {
+    try {
+      setLoading(true);
+      setError(null);
+      debugLog('Auth', 'Attempting login', { email });
+      
+      const response = await api.post('/users/login', { email, password });
+      debugLog('Auth', 'Login response data', response.data);
+      
+      const { user, token, refreshToken, message } = response.data;
+      
+      if (!user || !token) {
+        throw new Error(message || 'Invalid login response: Missing user data or token');
+      }
+
+      localStorage.setItem('accessToken', token);
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
+      
+      setUser(user);
+      debugLog('Auth', 'Login successful', { user });
+      
+      navigate('/dashboard', { replace: true });
+      return user;
+    } catch (error) {
+      debugLog('Auth', 'Login failed', { error });
+      setUser(null);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      setError(error.response?.data?.message || error.message || 'Login failed');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      setLoading(true);
+      debugLog('Auth', 'Attempting logout');
+      
+      await api.post('/users/logout').catch(err => 
+        debugLog('Auth', 'Backend logout failed (non-critical)', err)
+      );
+      
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      setUser(null);
+      
+      debugLog('Auth', 'Logout successful');
+      navigate('/login', { replace: true });
+    } catch (error) {
+      debugLog('Auth', 'Logout error', { error });
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading,
     error,
     login,
-    logout,
-    register,
-    updateProfile
+    logout
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={value}>

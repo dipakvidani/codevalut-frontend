@@ -177,23 +177,23 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">My Code Snippets</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Code Snippets</h1>
           <div className="flex items-center space-x-4">
             <button
               onClick={() => {
                 setShowForm(!showForm);
                 setEditingSnippet(null);
               }}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
             >
               {showForm ? 'Cancel' : 'New Snippet'}
             </button>
             <button
               onClick={logout}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
             >
               Logout
             </button>
@@ -201,86 +201,79 @@ const Dashboard = () => {
         </div>
 
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-            <p className="text-red-700">{error}</p>
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 dark:bg-red-900 dark:border-red-700 dark:text-red-100" role="alert">
+            <strong className="font-bold">Error! </strong>
+            <span className="block sm:inline">{error}</span>
           </div>
         )}
 
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <input
-            type="text"
-            placeholder="Search snippets..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="all">All Snippets</option>
-            <option value="public">Public</option>
-            <option value="private">Private</option>
-          </select>
-        </div>
-
         {showForm && (
-          <SnippetForm 
-            onSubmit={handleCreateOrUpdate} 
+          <SnippetForm
+            onSubmit={handleCreateOrUpdate}
             initialData={editingSnippet}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingSnippet(null);
+            }}
           />
         )}
 
-        {filteredSnippets.length === 0 && !loading && !error && (
-          <p className="text-center text-gray-500">No snippets found. Create one to get started!</p>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSnippets.map(snippet => (
-            <div key={snippet._id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{snippet.title}</h3>
-                <p className="text-gray-600 text-sm mb-4">{snippet.description}</p>
-                <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm font-mono mb-4">
-                  <code>{snippet.code}</code>
-                </pre>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {debugLog('Dashboard', 'Rendering snippet tags', { snippetId: snippet._id, tags: snippet.tags })}
-                  {(snippet.tags || []).map(tag => (
-                    <span key={tag} className="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex justify-between items-center text-sm text-gray-500">
-                  <span>Language: {snippet.language}</span>
-                  <span>{snippet.isPublic ? 'Public' : 'Private'}</span>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
-                <button
-                  onClick={() => handleEdit(snippet)}
-                  className="text-indigo-600 hover:text-indigo-900 font-medium"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(snippet._id)}
-                  className="text-red-600 hover:text-red-900 font-medium"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => handleToggleVisibility(snippet._id, snippet.isPublic)}
-                  className="text-gray-600 hover:text-gray-900 font-medium"
-                >
-                  {snippet.isPublic ? 'Make Private' : 'Make Public'}
-                </button>
-              </div>
+        {snippets.length === 0 && !error && !showForm ? (
+          <p className="text-center text-gray-600 dark:text-gray-400">You don't have any snippets yet. Start by creating one!</p>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <input
+                type="text"
+                placeholder="Search snippets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input px-4 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+              />
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="input px-4 py-2 border rounded-md ml-4 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="all" className="text-gray-900 dark:text-white">All Snippets</option>
+                <option value="public" className="text-gray-900 dark:text-white">Public</option>
+                <option value="private" className="text-gray-900 dark:text-white">Private</option>
+              </select>
             </div>
-          ))}
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredSnippets.map((snippet) => (
+                <div key={snippet._id} className="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                  <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">{snippet.title}</h3>
+                  <p className="text-gray-700 dark:text-gray-300">Language: {snippet.language}</p>
+                  <pre className="bg-gray-100 p-3 rounded-md mt-2 text-sm overflow-x-auto dark:bg-gray-700 dark:text-gray-200">
+                    <code>{snippet.code.substring(0, 100)}...</code>
+                  </pre>
+                  {/* Add more snippet details or actions here */}
+                  <div className="flex justify-end mt-4 space-x-3">
+                    <button
+                      onClick={() => handleEdit(snippet)}
+                      className="text-indigo-600 hover:text-indigo-900 font-medium dark:text-indigo-400 dark:hover:text-indigo-300"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(snippet._id)}
+                      className="text-red-600 hover:text-red-900 font-medium dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => handleToggleVisibility(snippet._id, snippet.isPublic)}
+                      className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-400 dark:hover:text-gray-300"
+                    >
+                      {snippet.isPublic ? 'Make Private' : 'Make Public'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
