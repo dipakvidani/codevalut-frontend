@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shield base -->
+  <path
+    d="M50 5L15 20V45C15 65.5 30.5 84.5 50 95C69.5 84.5 85 65.5 85 45V20L50 5Z"
+    fill="#4F46E5"
+    stroke="#312E81"
+    stroke-width="2"
+  />
+  
+  <!-- Code brackets -->
+  <path
+    d="M35 35L45 50L35 65M65 35L55 50L65 65"
+    stroke="white"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  
+  <!-- Lock -->
+  <rect
+    x="40"
+    y="40"
+    width="20"
+    height="15"
+    rx="2"
+    fill="white"
+  />
+  <path
+    d="M45 40V35C45 32.2386 47.2386 30 50 30C52.7614 30 55 32.2386 55 35V40"
+    stroke="white"
+    stroke-width="2"
+  />
+</svg> 
