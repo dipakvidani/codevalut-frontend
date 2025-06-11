@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import api from '../services/api';
 import { debugLog } from '../utils/DevConsole';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { FaClipboard } from 'react-icons/fa';
 
 const PublicSnippets = () => {
   const { user } = useAuth();
@@ -49,6 +50,16 @@ const PublicSnippets = () => {
 
     return matchesSearch && matchesLanguage;
   });
+
+  const handleCopyCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success('Snippet code copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy code: ', err);
+      toast.error('Failed to copy code to clipboard.');
+    }
+  };
 
   if (loading) {
     return <LoadingSpinner />;
@@ -117,12 +128,21 @@ const PublicSnippets = () => {
                         {tag}
                       </span>
                     ))}
-            </div>
+                  </div>
                   {snippet.updatedAt && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                       Last Updated: {new Date(snippet.updatedAt).toLocaleDateString()} at {new Date(snippet.updatedAt).toLocaleTimeString()}
                     </p>
-          )}
+                  )}
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={() => handleCopyCode(snippet.code)}
+                      className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded-full"
+                      aria-label="Copy code to clipboard"
+                    >
+                      <FaClipboard className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

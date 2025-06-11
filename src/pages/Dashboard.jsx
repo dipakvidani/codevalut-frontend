@@ -5,6 +5,7 @@ import api from '../services/api';
 import { debugLog } from '../utils/DevConsole';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SnippetForm from '../components/SnippetForm';
+import { FaClipboard, FaEdit, FaTrash } from 'react-icons/fa';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -156,6 +157,16 @@ const Dashboard = () => {
     }
   };
 
+  const handleCopyCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success('Snippet code copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy code: ', err);
+      toast.error('Failed to copy code to clipboard.');
+    }
+  };
+
   const filteredSnippets = useMemo(() => {
     debugLog('Dashboard', 'Filtering snippets', { filter, searchQuery, snippetCount: snippets.length });
     return snippets.filter(snippet => {
@@ -226,16 +237,16 @@ const Dashboard = () => {
         ) : (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <input
-                type="text"
-                placeholder="Search snippets..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+          <input
+            type="text"
+            placeholder="Search snippets..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
                 className="input px-4 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-              />
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
+          />
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
                 className="input px-4 py-2 border rounded-md ml-4 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
                 <option value="all" className="text-gray-900 dark:text-white">All Snippets</option>
@@ -257,8 +268,8 @@ const Dashboard = () => {
                 <option value="ruby" className="text-gray-900 dark:text-white">Ruby</option>
                 <option value="swift" className="text-gray-900 dark:text-white">Swift</option>
                 <option value="go" className="text-gray-900 dark:text-white">Go</option>
-              </select>
-            </div>
+          </select>
+        </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredSnippets.map((snippet) => (
                 <div key={snippet._id} className="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
@@ -267,26 +278,47 @@ const Dashboard = () => {
                   <pre className="bg-gray-100 p-3 rounded-md mt-2 text-sm overflow-x-auto dark:bg-gray-700 dark:text-gray-200">
                     <code>{snippet.code.substring(0, 100)}...</code>
                   </pre>
-                  {/* Add more snippet details or actions here */}
-                  <div className="flex justify-end mt-4 space-x-3">
-                    <button
-                      onClick={() => handleEdit(snippet)}
-                      className="text-indigo-600 hover:text-indigo-900 font-medium dark:text-indigo-400 dark:hover:text-indigo-300"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(snippet._id)}
-                      className="text-red-600 hover:text-red-900 font-medium dark:text-red-400 dark:hover:text-red-300"
-                    >
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => handleToggleVisibility(snippet._id, snippet.isPublic)}
-                      className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-400 dark:hover:text-gray-300"
-                    >
-                      {snippet.isPublic ? 'Make Private' : 'Make Public'}
-                    </button>
+                  <div className="flex justify-between items-center mt-4">
+                    <div className="flex items-center">
+                      <span className="mr-2 text-gray-700 dark:text-gray-300">Private</span>
+                      <label htmlFor={`toggle-${snippet._id}`} className="flex items-center cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            id={`toggle-${snippet._id}`}
+                            className="sr-only peer"
+                            checked={snippet.isPublic}
+                            onChange={() => handleToggleVisibility(snippet._id, snippet.isPublic)}
+                          />
+                          <div className={`block w-10 h-6 rounded-full transition-colors duration-200 ease-in-out ${snippet.isPublic ? 'bg-indigo-600 dark:bg-indigo-500' : 'bg-gray-600 dark:bg-gray-700'}`}></div>
+                          <div className="dot absolute left-[2px] top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out peer-checked:translate-x-[22px]"></div>
+                        </div>
+                        <div className="ml-2 text-gray-700 dark:text-gray-300">Public</div>
+                      </label>
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => handleEdit(snippet)}
+                        className="text-indigo-600 hover:text-indigo-900 font-medium dark:text-indigo-400 dark:hover:text-indigo-300 p-1 rounded-full"
+                        aria-label="Edit snippet"
+                      >
+                        <FaEdit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(snippet._id)}
+                        className="text-red-600 hover:text-red-900 font-medium dark:text-red-400 dark:hover:text-red-300 p-1 rounded-full"
+                        aria-label="Delete snippet"
+                      >
+                        <FaTrash className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleCopyCode(snippet.code)}
+                        className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded-full"
+                        aria-label="Copy code to clipboard"
+                      >
+                        <FaClipboard className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
