@@ -66,7 +66,7 @@ const PublicRoute = React.memo(({ children }) => {
   }
 
   debugLog('PublicRoute', 'Access granted', { path: window.location.pathname });
-  return children;
+  return <>{children}</>;
 });
 
 function App() {
@@ -103,7 +103,7 @@ function App() {
             }
           />
           <Route
-            path="/reset-password"
+            path="/reset-password/:token"
             element={
               <PublicRoute>
                 <ResetPassword />
