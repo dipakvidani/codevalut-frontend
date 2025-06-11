@@ -1,13 +1,14 @@
-import React from 'react'
+import React, { memo, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import './index.css'
 import { debugLog } from './utils/DevConsole'
+import LoadingSpinner from './components/LoadingSpinner'
 
-// Error boundary component for root-level errors
-const RootErrorFallback = ({ error, resetErrorBoundary }) => {
+// Memoized error boundary component for root-level errors
+const RootErrorFallback = memo(({ error, resetErrorBoundary }) => {
   debugLog('Root', 'Error boundary caught error', { error })
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -31,13 +32,13 @@ const RootErrorFallback = ({ error, resetErrorBoundary }) => {
       </div>
     </div>
   )
-}
+})
 
-// Global error handler
-const handleError = (error) => {
+// Memoized global error handler
+const handleError = memo((error) => {
   debugLog('Global', 'Unhandled error caught', { error })
   // You can add additional error reporting here
-}
+})
 
 // Initialize React
 debugLog('Main', 'Initializing React')
@@ -47,7 +48,7 @@ if (!rootElement) {
   throw new Error('Root element not found')
 }
 
-// Render the app
+// Render the app with Suspense for code splitting
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <BrowserRouter future={{ 
@@ -55,7 +56,9 @@ ReactDOM.createRoot(rootElement).render(
       v7_startTransition: true 
     }}>
       <AuthProvider>
-        <App />
+        <Suspense fallback={<LoadingSpinner />}>
+          <App />
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
