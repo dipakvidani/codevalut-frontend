@@ -26,7 +26,11 @@ const ProtectedRoute = React.memo(({ children }) => {
   });
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   if (!user) {
@@ -49,7 +53,11 @@ const PublicRoute = React.memo(({ children }) => {
   });
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   if (user) {

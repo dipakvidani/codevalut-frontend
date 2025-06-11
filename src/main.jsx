@@ -34,11 +34,12 @@ const RootErrorFallback = memo(({ error, resetErrorBoundary }) => {
   )
 })
 
-// Memoized global error handler
-const handleError = memo((error) => {
+// Global error handler function
+const handleError = (error) => {
   debugLog('Global', 'Unhandled error caught', { error })
   // You can add additional error reporting here
-})
+  console.error('Unhandled error:', error)
+}
 
 // Initialize React
 debugLog('Main', 'Initializing React')
@@ -55,11 +56,11 @@ ReactDOM.createRoot(rootElement).render(
       v7_relativeSplatPath: true,
       v7_startTransition: true 
     }}>
-      <AuthProvider>
-        <Suspense fallback={<LoadingSpinner />}>
+      <Suspense fallback={<LoadingSpinner />}>
+        <AuthProvider>
           <App />
-        </Suspense>
-      </AuthProvider>
+        </AuthProvider>
+      </Suspense>
     </BrowserRouter>
   </React.StrictMode>
 )
