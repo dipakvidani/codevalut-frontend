@@ -25,6 +25,11 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
+  },
+  // Add CORS configuration
+  crossDomain: true,
+  xhrFields: {
+    withCredentials: true
   }
 });
 

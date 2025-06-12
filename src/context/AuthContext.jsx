@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await api.get('/users/profile');
           if (response.data) {
-          setUser(response.data);
+            setUser(response.data);
             debugLog('Auth', 'User profile fetched successfully', { user: response.data });
           } else {
             throw new Error('Invalid user profile data received');
